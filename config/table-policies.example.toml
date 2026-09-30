@@ -1,0 +1,21 @@
+# Documentation example, NOT the default active allowlist.
+# All REPLACE_* identifiers must be replaced before use.
+[tables.example_table]
+schema = "REPLACE_SCHEMA"
+table = "REPLACE_TABLE"
+date_column = "REPLACE_DATE_COLUMN"
+exclude_columns = ["OPTIONAL_COLUMN"]
+
+[tables.example_table.regenerate]
+CREATED_AT = "utc_now"          # Only for datetime/datetime2/smalldatetime
+RECORD_UUID = "new_uuid"        # Only for uniqueidentifier
+SEQUENCE_ID = "default"         # Omit: use an existing configured DB default
+
+[[tables.example_table.source_filters]]
+column = "RECORD_STATUS"
+operator = "eq"
+value = "VALID"
+
+[tables.example_table.overrides.uat]
+schema = "REPLACE_UAT_SCHEMA"
+# Overrides cannot change DATABASE, SERVER, connection section, or credentials.

@@ -1,0 +1,2 @@
+# ODBC driver installation is separate; see README.
+pyodbc==5.3.0

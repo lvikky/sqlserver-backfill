@@ -1,0 +1,11 @@
+# Approved identifier from the supplied SQL screenshots.
+# DATABASE is resolved exclusively from the selected connection INI section.
+# No column list is maintained here: sys.columns supplies the ordered list.
+[tables.banking_sfts]
+schema = "LST_SF_EXTRACT"
+table = "BANKING_SFTS"
+date_column = "AS_OF_DATE"
+exclude_columns = []
+
+# DT_EL_EXECUTIONTIMESTAMP is copied unchanged by default, like the sample SQL.
+# Add the remaining approved aliases here only after confirming their names.

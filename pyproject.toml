@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "controlled-sqlserver-backfill"
+version = "0.1.0"
+description = "Environment-aware, preview-first historical backfills for SQL Server"
+requires-python = ">=3.13"
+dependencies = ["pyodbc==5.3.0"]
+
+[project.scripts]
+sqlserver-backfill = "backfill.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
