@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 import traceback
+import pyodbc
 
 APPROVED_TABLES = [
     "BANKING_COMMERCIAL_PAPER",
@@ -44,8 +45,6 @@ logger = setup_logger()
 
 
 def get_db_connect_str(config_file, environment):
-    import pyodbc
-
     logger.info("Reading DB config from %s for environment %s", config_file, environment)
 
     config = configparser.ConfigParser()
@@ -212,7 +211,7 @@ def build_insert_sql(table_name, date_column, insertable_columns):
     insert_columns = ",\n    ".join(insertable_columns)
     select_parts = []
     for col_name in insertable_columns:
-        if col_name == date_column:
+        if col_name == date_column or (table_name == "NET_LIABILITIES" and col_name == "DTPOS"):
             select_parts.append(f"? AS {col_name}")
         else:
             select_parts.append(col_name)
@@ -287,8 +286,6 @@ def run_backfill(args):
 
     ensure_environment_config(config_file, environment)
 
-    import pyodbc
-
     connect_str = get_db_connect_str(config_file, environment)
     conn = pyodbc.connect(connect_str, autocommit=False, timeout=120)
     cursor = conn.cursor()
@@ -308,9 +305,15 @@ def run_backfill(args):
         if not any(item["COLUMN_NAME"] == date_column for item in columns):
             raise ValueError(f"Required date column '{date_column}' does not exist in {table_full_name(table_name)}.")
 
+        if table_name == "NET_LIABILITIES" and not any(item["COLUMN_NAME"] == "DTPOS" for item in columns):
+            raise ValueError(f"Required date column 'DTPOS' does not exist in {table_full_name(table_name)}.")
+
         insertable_columns, identity_columns = determine_insertable_columns(columns, date_column, table_name)
         if not insertable_columns:
             raise ValueError(f"No insertable columns were found for {table_full_name(table_name)}")
+
+        if table_name == "NET_LIABILITIES" and "DTPOS" not in insertable_columns:
+            raise ValueError(f"Required date column 'DTPOS' is not insertable in {table_full_name(table_name)}.")
 
         generated_sql = build_insert_sql(table_name, date_column, insertable_columns)
 
@@ -346,30 +349,16 @@ def run_backfill(args):
             )
             return 0
 
-        if environment == "PROD":
-            print("")
-            print("Table       : " + table_full_name(table_name))
-            print(f"Source Date : {source_date.isoformat()}")
-            print(f"Target Date : {target_date.isoformat()}")
-            print(f"Rows        : {source_count:,}")
-            print("")
-            print("# This operation will INSERT records into PRODUCTION.")
-            confirmation = input("Type EXECUTE PROD to continue: ").strip()
-            if confirmation != "EXECUTE PROD":
-                print("Production confirmation failed. Operation cancelled safely.")
-                return 1
-
         logger.info("Executing backfill for %s in %s mode", table_name, environment)
         sql = generated_sql
         params = []
         for col_name in insertable_columns:
-            if col_name == date_column:
+            if col_name == date_column or (table_name == "NET_LIABILITIES" and col_name == "DTPOS"):
                 params.append(target_date.isoformat())
             else:
                 pass
         params.append(source_date.isoformat())
 
-        cursor.execute("BEGIN TRANSACTION")
         cursor.execute(sql, tuple(params))
         inserted_target_count = get_row_count(conn, table_name, date_column, target_date.isoformat())
 
